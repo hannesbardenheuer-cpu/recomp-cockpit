@@ -1,7 +1,7 @@
 /* Recomp Cockpit – Service Worker
    Cache-first app shell, runtime-cache for fonts. Bump CACHE to force update. */
 
-const CACHE = "recomp-cockpit-v2";
+const CACHE = "recomp-cockpit-v3";
 
 const CORE = [
   "./",
