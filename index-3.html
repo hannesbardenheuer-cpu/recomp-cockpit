@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Recomp Cockpit · 87</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recomp 87">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#15181E;
+    --card:#1F242C;
+    --card-2:#272D37;
+    --line:#2E353F;
+    --line-soft:#23292F;
+    --ink:#F2F4F8;
+    --ink-dim:#929AA6;
+    --ink-faint:#646D7A;
+    --amber:#F6A623;
+    --amber-soft:rgba(246,166,35,.15);
+    --mint:#34D399;
+    --mint-soft:rgba(52,211,153,.15);
+    --blue:#5B9DFF;
+    --blue-soft:rgba(91,157,255,.15);
+    --coral:#F87171;
+    --coral-soft:rgba(248,113,113,.15);
+    --r:26px;
+    --r-md:22px;
+    --r-sm:14px;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+    --disp:"Space Grotesk",system-ui,sans-serif;
+    --body:"Inter",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;
+    max-width:760px;margin:0 auto;-webkit-font-smoothing:antialiased;
+    padding:0 16px calc(96px + env(safe-area-inset-bottom));
+  }
+  ::selection{background:var(--amber-soft)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
+
+  /* collapsing top bar (One UI) */
+  .topbar{position:fixed;top:0;left:0;right:0;max-width:760px;margin:0 auto;z-index:40;
+    display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 18px 8px;
+    background:rgba(0,0,0,0);backdrop-filter:blur(0px);transition:background .25s,backdrop-filter .25s,opacity .2s;
+    opacity:0;pointer-events:none}
+  .topbar.show{opacity:1;background:rgba(8,9,11,.8);backdrop-filter:blur(20px)}
+  .topbar .tb-title{font-family:var(--disp);font-weight:600;font-size:15px}
+  .topbar .tb-goal{font-family:var(--mono);font-size:12px;color:var(--amber);margin-left:auto}
+
+  .page-view{display:none}
+  .page-view.active{display:block}
+
+  /* masthead — monumental One UI header */
+  .masthead{padding:calc(46px + env(safe-area-inset-top)) 4px 30px}
+  .masthead .kicker{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px var(--amber)}
+  .masthead h1{font-family:var(--disp);font-weight:600;font-size:clamp(32px,9vw,46px);letter-spacing:-.025em;line-height:1.02}
+  .masthead h1 b{color:var(--amber);font-weight:600}
+  .masthead .sub{color:var(--ink-dim);font-size:14px;margin-top:10px;max-width:46ch}
+
+  /* HO / Büro toggle */
+  .mode-toggle{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px}
+  .mode-toggle button{border:none;background:none;color:var(--ink-faint);font-family:var(--mono);font-size:11px;font-weight:600;
+    padding:7px 13px;border-radius:99px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .18s;letter-spacing:.04em}
+  .mode-toggle button.on{background:var(--card-2);color:var(--ink)}
+  .mode-toggle button.on[data-mode="office"]{color:var(--amber)}
+  .mode-toggle button.on[data-mode="home"]{color:var(--mint)}
+
+  .cluster{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:6px 0 8px}
+  .readout{background:var(--panel);border-radius:var(--r-md);padding:17px 18px;overflow:hidden}
+  .readout .lab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .readout .lab .eyebrow{font-size:10px}
+  .readout .tag{font-family:var(--mono);font-size:10px;color:var(--ink-faint)}
+  .readout .vals{display:flex;align-items:baseline;gap:9px}
+  .readout .cur{font-family:var(--mono);font-weight:700;font-size:30px;letter-spacing:-.02em}
+  .readout .arrow{color:var(--ink-faint);font-size:15px}
+  .readout .goal{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--amber)}
+  .readout .delta{margin-top:9px;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim)}
+
+  .today-card{grid-column:1 / -1;background:var(--panel);border-radius:var(--r-md);padding:18px;display:flex;align-items:center;gap:16px}
+  .ring-wrap{flex:0 0 auto;position:relative;width:88px;height:88px}
+  .ring-wrap svg{transform:rotate(-90deg);display:block}
+  .ring-bg{fill:none;stroke:var(--line);stroke-width:8}
+  .ring-fg{fill:none;stroke:var(--amber);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .55s cubic-bezier(.22,1,.36,1),stroke .3s}
+  .ring-pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-pct b{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
+  .ring-pct small{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;margin-top:2px}
+  .today-meta{flex:1 1 auto;min-width:0}
+  .today-meta .eyebrow{margin-bottom:5px}
+  .today-meta h2{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:-.01em}
+  .today-meta .line2{display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:500;background:var(--card);border-radius:99px;padding:6px 11px;color:var(--ink-dim)}
+  .pill .fire{color:var(--amber)}
+  .pill b{color:var(--ink);font-weight:700}
+
+  section{margin-top:30px}
+  .page-view > section:first-child{margin-top:14px}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:0 4px}
+  .sec-head .idx{font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:700}
+  .sec-head h2{font-family:var(--disp);font-weight:600;font-size:22px;letter-spacing:-.01em}
+
+  .page-title{font-family:var(--disp);font-weight:600;font-size:clamp(28px,8vw,38px);letter-spacing:-.02em;padding:calc(46px + env(safe-area-inset-top)) 4px 6px}
+  .page-lede{color:var(--ink-dim);font-size:13.5px;padding:0 4px 6px;max-width:46ch}
+
+  .group{margin-bottom:14px}
+  .group:last-child{margin-bottom:0}
+  .group-lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 6px 9px;display:flex;align-items:center;gap:7px}
+  .group-lab::before{content:"";width:5px;height:5px;border-radius:1px;background:var(--amber)}
+  .list{background:var(--panel);border-radius:var(--r-md);overflow:hidden}
+  .task{display:flex;align-items:flex-start;gap:13px;padding:15px 16px;cursor:pointer;border-bottom:1px solid var(--line-soft);-webkit-tap-highlight-color:transparent;transition:background .12s;user-select:none}
+  .task:last-child{border-bottom:none}
+  .task:active{background:var(--card)}
+  .box{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:2px solid var(--line);margin-top:0;display:flex;align-items:center;justify-content:center;transition:all .18s cubic-bezier(.22,1,.36,1)}
+  .box svg{width:12px;height:12px;opacity:0;transform:scale(.5);transition:all .18s cubic-bezier(.22,1,.36,1)}
+  .task-txt{font-size:14.5px;color:var(--ink);transition:color .18s;padding-top:1px}
+  .task-txt small{display:block;font-size:11.5px;color:var(--ink-faint);margin-top:2px;font-family:var(--mono)}
+  .task.done .box{background:var(--mint);border-color:var(--mint)}
+  .task.done .box svg{opacity:1;transform:scale(1);stroke:#000}
+  .task.done .task-txt{color:var(--ink-dim);text-decoration:line-through;text-decoration-color:var(--ink-faint)}
+  .task:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+  .task.ctx-home .task-txt{color:var(--mint)}
+  .task.ctx-home.done .task-txt{color:var(--ink-dim)}
+
+  /* week */
+  .week{display:flex;flex-direction:column;gap:6px;position:relative}
+  .day-header{display:flex;align-items:center;gap:10px;padding:14px 6px 7px;margin-top:6px}
+  .day-header:first-child{margin-top:0}
+  .day-header .wd{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em}
+  .day-header .hr{flex:1;height:1px;background:var(--line-soft)}
+  .add-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:var(--card);color:var(--amber);border:none;border-radius:99px;padding:7px 13px 7px 11px;font-family:var(--body);font-size:12px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .add-btn:active{background:var(--card-2)}
+  .add-btn svg{width:14px;height:14px}
+  .session{background:var(--panel);border-radius:var(--r-md);overflow:hidden;position:relative}
+  .s-head{display:flex;align-items:center;gap:11px;padding:14px 8px 14px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+  .s-head:active{background:var(--card)}
+  .s-accent{flex:0 0 auto;width:4px;height:30px;border-radius:99px;background:var(--amber)}
+  .s-accent.cardio{background:var(--blue)}.s-accent.rest{background:var(--ink-faint)}.s-accent.mob{background:var(--mint)}
+  .s-title{flex:1 1 auto;min-width:0;font-size:15px;font-weight:600}
+  .s-title small{display:block;font-size:11px;color:var(--ink-faint);margin-top:2px;font-family:var(--mono);font-weight:400}
+  .s-title small.alldone{color:var(--mint)}
+  .chev{flex:0 0 auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);transition:transform .22s}
+  .chev svg{width:15px;height:15px}.session.open .chev{transform:rotate(180deg)}
+  .s-remove{flex:0 0 auto;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--ink-faint);border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .s-remove:active{background:var(--card-2);color:var(--coral)}.s-remove svg{width:15px;height:15px}
+  .handle{flex:0 0 auto;width:32px;height:36px;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--ink-faint);border-radius:8px;cursor:grab;touch-action:none;-webkit-tap-highlight-color:transparent}
+  .handle:active{cursor:grabbing}.handle svg{width:15px;height:15px;pointer-events:none}
+  .session.dragging{z-index:6;box-shadow:0 16px 34px rgba(0,0,0,.6);outline:1px solid var(--amber)}
+  .session.dragging .handle{color:var(--amber)}
+  .s-body{display:none;border-top:1px solid var(--line-soft)}
+  .session.open .s-body{display:block}
+  .ex{display:flex;flex-direction:column;align-items:stretch;gap:9px;padding:12px 16px;border-bottom:1px solid var(--line-soft);-webkit-tap-highlight-color:transparent;user-select:none}
+  .ex-top{display:flex;align-items:center;gap:12px;cursor:pointer}
+  .ex-log{display:flex;align-items:center;gap:8px;padding-left:33px}
+  .exl-hint{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .exl-in{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .exl-w,.exl-r{width:52px;background:var(--card);border:1.5px solid var(--line);border-radius:9px;padding:7px 6px;color:var(--ink);font-family:var(--mono);font-size:12px;text-align:center;outline:none;-moz-appearance:textfield}
+  .exl-w::-webkit-outer-spin-button,.exl-w::-webkit-inner-spin-button,.exl-r::-webkit-outer-spin-button,.exl-r::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .exl-w:focus,.exl-r:focus{border-color:var(--amber)}
+  .exl-x{color:var(--ink-faint);font-family:var(--mono);font-size:12px}
+  .exl-pr{font-family:var(--mono);font-size:10px;color:var(--mint);font-weight:700;min-width:30px;text-align:right}
+  .ex:active{background:var(--card)}.ex .box{width:21px;height:21px}
+  .ex .ex-txt{flex:1 1 auto;font-size:13.5px}
+  .ex .ex-sets{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);white-space:nowrap}
+  .ex.done .ex-txt{color:var(--ink-dim);text-decoration:line-through;text-decoration-color:var(--ink-faint)}.ex.done .ex-sets{color:var(--ink-faint)}
+  .s-foot{padding:12px 16px 14px;display:flex;justify-content:flex-end}
+  .reset-btn{background:none;border:1px solid var(--line);color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;padding:8px 14px;border-radius:99px;cursor:pointer;letter-spacing:.05em;-webkit-tap-highlight-color:transparent}
+  .reset-btn:active{border-color:var(--amber);color:var(--amber)}
+  .day-empty{font-size:12.5px;color:var(--ink-faint);padding:10px 16px;background:var(--panel);border-radius:var(--r-md);font-family:var(--mono)}
+  .badge{flex:0 0 auto;font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:99px;white-space:nowrap}
+  .b-lift{background:var(--amber-soft);color:var(--amber)}.b-cardio{background:var(--blue-soft);color:var(--blue)}.b-rest{background:var(--card-2);color:var(--ink-faint)}.b-mob{background:var(--mint-soft);color:var(--mint)}
+  .week-note{font-size:12px;color:var(--ink-dim);margin-top:13px;padding:13px 15px;background:var(--card);border-radius:var(--r-sm);border-left:2px solid var(--amber)}
+  .week-note b{color:var(--ink)}
+
+  /* bottom sheet */
+  .sheet-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;display:flex;align-items:flex-end}
+  .sheet-ov.show{opacity:1;pointer-events:auto}
+  .sheet{width:100%;max-width:760px;margin:0 auto;background:var(--panel);border-radius:28px 28px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .28s cubic-bezier(.22,1,.36,1)}
+  .sheet-ov.show .sheet{transform:translateY(0)}
+  .sheet-grip{width:38px;height:4px;border-radius:99px;background:var(--line);margin:6px auto 14px}
+  .sheet h3{font-family:var(--disp);font-weight:600;font-size:18px;margin:0 4px 14px}
+  .sheet-opts{display:flex;flex-direction:column;gap:7px;max-height:60vh;overflow-y:auto}
+  .sheet-opt{display:flex;align-items:center;gap:12px;background:var(--card);border:none;border-radius:14px;padding:15px;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+  .sheet-opt:active{background:var(--card-2)}
+  .sheet-opt .so-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .sheet-opt .so-t{flex:1;font-size:14.5px;font-weight:600;color:var(--ink)}
+  .sheet-opt .so-t small{display:block;font-weight:400;font-size:11.5px;color:var(--ink-faint);font-family:var(--mono);margin-top:1px}
+  .sheet-cancel{width:100%;margin-top:12px;background:var(--card);border:none;border-radius:14px;padding:15px;color:var(--ink-dim);font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer}
+
+  .macros{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:13px}
+  .macro{background:var(--panel);border-radius:var(--r-sm);padding:13px 10px;text-align:center}
+  .macro .mlab{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+  .macro .mval{font-family:var(--mono);font-weight:700;font-size:21px;letter-spacing:-.02em}
+  .macro .mval span{font-size:11px;color:var(--ink-dim);font-weight:500}
+  .macro .mkcal{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:3px}
+  .macro.kcal{grid-column:1 / -1}.macro.kcal .mval{font-size:30px;color:var(--amber)}.macro.p .mval{color:var(--mint)}
+  .info{font-size:13px;color:var(--ink-dim);background:var(--card);border-radius:var(--r-sm);padding:14px 15px;border-left:2px solid var(--mint)}
+  .info b{color:var(--ink)}
+  .fuel{background:var(--panel);border-radius:var(--r-md);overflow:hidden;margin-top:12px}
+  .fuel-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px 15px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .fuel-row:last-child{border-bottom:none}.fuel-row .ffood{color:var(--ink)}.fuel-row .fp{font-family:var(--mono);font-size:12px;color:var(--mint);font-weight:500;white-space:nowrap}
+
+  .blocks{display:flex;flex-direction:column;gap:11px}
+  .block{background:var(--panel);border-radius:var(--r-md);overflow:hidden}
+  .block-head{display:flex;align-items:center;gap:11px;padding:14px 16px;background:var(--card)}
+  .block-head .tcode{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--amber);background:var(--amber-soft);padding:3px 8px;border-radius:6px}
+  .block-head h3{font-family:var(--disp);font-weight:600;font-size:15px}
+  .block-head .sub{font-size:11px;color:var(--ink-faint);margin-left:auto;font-family:var(--mono)}
+  .block ul{list-style:none;padding:7px 16px 14px}
+  .block li{font-size:13px;color:var(--ink-dim);padding:6px 0 6px 18px;position:relative}
+  .block li::before{content:"";position:absolute;left:2px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--line);border:1px solid var(--ink-faint)}
+  .block li b{color:var(--ink);font-weight:600}.block li.key::before{background:var(--mint);border-color:var(--mint)}
+
+  /* Definition of Done box */
+  .dod{background:var(--panel);border-radius:var(--r-md);border-left:2px solid var(--mint);padding:16px;margin-top:14px}
+  .dod h3{font-family:var(--disp);font-weight:600;font-size:15px;margin-bottom:3px}
+  .dod .dod-sub{font-size:12px;color:var(--ink-faint);margin-bottom:12px;font-family:var(--mono)}
+  .dod-item{display:flex;align-items:center;gap:12px;padding:11px 0;cursor:pointer;border-top:1px solid var(--line-soft);-webkit-tap-highlight-color:transparent;user-select:none}
+  .dod-item .box{width:21px;height:21px}
+  .dod-item span{font-size:13.5px}
+  .dod-item.done span{color:var(--ink-dim);text-decoration:line-through;text-decoration-color:var(--ink-faint)}
+  .dod-hint{font-size:12px;color:var(--mint);margin-top:12px;font-weight:500}
+
+  /* Emotion picker */
+  .panel{background:var(--panel);border-radius:var(--r-md);padding:18px}
+  .panel h3{font-family:var(--disp);font-weight:600;font-size:17px;margin-bottom:14px;text-align:center}
+  .emo-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .emo-btn{min-height:64px;border:1.5px solid var(--line);background:var(--card);border-radius:16px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:10px;-webkit-tap-highlight-color:transparent;transition:all .18s}
+  .emo-btn .emo-dot{width:11px;height:11px;border-radius:50%}
+  .emo-btn .emo-l{font-size:12.5px;font-weight:600;color:var(--ink-dim);text-align:center;line-height:1.25}
+  .emo-btn.on{background:var(--card-2)}
+  .emo-btn.on.focus{border-color:var(--mint);box-shadow:0 0 0 1px var(--mint),0 0 18px var(--mint-soft)}
+  .emo-btn.on.stress{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber),0 0 18px var(--amber-soft)}
+  .emo-btn.on.tired{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue),0 0 18px var(--blue-soft)}
+  .emo-btn.on.doom{border-color:var(--coral);box-shadow:0 0 0 1px var(--coral),0 0 18px var(--coral-soft)}
+  .emo-btn.on .emo-l{color:var(--ink)}
+
+  /* 14-day emotion overview */
+  .emo-hist{margin-top:13px}
+  .emo-hist .eh-days,.emo-hist .eh-cells{display:grid;grid-template-columns:repeat(14,1fr);gap:4px}
+  .emo-hist .eh-days div{font-family:var(--mono);font-size:8px;color:var(--ink-faint);text-align:center}
+  .emo-hist .eh-cells{margin-top:4px}
+  .eh-cell{aspect-ratio:1;border-radius:5px;background:var(--line)}
+  .eh-cell.focus{background:var(--mint)}.eh-cell.stress{background:var(--amber)}.eh-cell.tired{background:var(--blue)}.eh-cell.doom{background:var(--coral)}
+  .eh-cell.today{outline:1.5px solid var(--ink-dim);outline-offset:1px}
+
+  /* weekly insights */
+  .insights{background:var(--panel);border-radius:var(--r-md);padding:18px}
+  .ins-row{margin-bottom:14px}.ins-row:last-child{margin-bottom:0}
+  .ins-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .ins-top .ins-l{font-size:13.5px;color:var(--ink)}
+  .ins-top .ins-v{font-family:var(--mono);font-weight:700;font-size:14px}
+  .ins-bar{height:7px;background:var(--card);border-radius:99px;overflow:hidden}
+  .ins-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1)}
+
+  /* daily win */
+  .win-card{background:var(--panel);border-radius:var(--r-md);padding:16px}
+  .win-input{width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px;color:var(--ink);
+    font-family:var(--body);font-size:14px;outline:none;transition:border-color .15s}
+  .win-input:focus{border-color:var(--mint)}
+  .win-input::placeholder{color:var(--ink-faint)}
+  .win-list{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+  .win-item{display:flex;gap:10px;font-family:var(--mono);font-size:12px;color:var(--ink-dim);padding:9px 12px;background:var(--card);border-radius:10px}
+  .win-item .wd{color:var(--mint);flex:0 0 auto}
+
+  .lever{display:grid;grid-template-columns:34px 1fr;gap:13px;align-items:start;background:var(--panel);border-radius:var(--r-md);padding:15px 16px;margin-bottom:9px}
+  .lever .rank{font-family:var(--mono);font-weight:700;font-size:22px;color:var(--amber);line-height:1;text-align:center}
+  .lever .rank.done-rank{color:var(--mint)}
+  .lever h3{font-family:var(--disp);font-weight:600;font-size:15px;margin-bottom:3px}
+  .lever p{font-size:12.5px;color:var(--ink-dim)}.lever p b{color:var(--ink)}
+
+  .foot{margin-top:30px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.05em}
+  .foot-actions{display:flex;gap:9px;justify-content:center;margin-top:13px;flex-wrap:wrap}
+  .btn{background:none;border:1px solid var(--line);color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;padding:9px 16px;border-radius:99px;cursor:pointer;transition:all .15s;letter-spacing:.06em}
+  .btn:active{border-color:var(--coral);color:var(--coral)}
+  .btn.install{border-color:var(--amber);color:var(--amber);display:none}.btn.install.show{display:inline-block}
+
+  /* One UI bottom tab bar */
+  .tab-bar{position:fixed;bottom:0;left:0;right:0;max-width:760px;margin:0 auto;z-index:50;
+    display:grid;grid-template-columns:repeat(4,1fr);
+    background:rgba(18,20,25,.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border-top:1px solid var(--line-soft);padding-bottom:env(safe-area-inset-bottom)}
+  .tab-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 4px 9px;border:none;background:none;
+    color:var(--ink-faint);cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative;transition:color .18s}
+  .tab-btn svg{width:23px;height:23px;stroke-width:1.6;transition:transform .18s}
+  .tab-btn .tb-l{font-family:var(--mono);font-size:9px;letter-spacing:.04em;font-weight:500}
+  .tab-btn .tb-ind{position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--amber);opacity:0;transition:opacity .18s}
+  .tab-btn.on{color:var(--amber)}
+  .tab-btn.on svg{transform:scale(1.08)}
+  .tab-btn.on .tb-l{color:var(--amber);font-weight:700}
+  .tab-btn.on .tb-ind{opacity:1}
+
+  /* readiness check */
+  .ready{background:var(--panel);border-radius:var(--r-md);padding:18px}
+  .ready h3{font-family:var(--disp);font-weight:600;font-size:16px;margin-bottom:3px}
+  .ready .rd-sub{font-size:12px;color:var(--ink-faint);font-family:var(--mono);margin-bottom:15px}
+  .rd-metric{margin-bottom:13px}
+  .rd-lab{font-size:13px;color:var(--ink-dim);margin-bottom:7px}
+  .rd-scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .rd-dot{height:36px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--ink-faint);-webkit-tap-highlight-color:transparent;transition:all .15s}
+  .rd-dot.on{border-color:var(--amber);color:var(--ink);background:var(--card-2)}
+  .rd-result{margin-top:8px;padding:13px 15px;border-radius:14px;background:var(--card);font-size:13px;color:var(--ink-dim);display:flex;gap:11px;align-items:center;line-height:1.35}
+  .rd-badge{font-family:var(--mono);font-size:11px;font-weight:700;padding:5px 10px;border-radius:99px;flex:0 0 auto}
+
+  /* measurements */
+  .measure{background:var(--panel);border-radius:var(--r-md);padding:18px}
+  .mz-row{display:flex;gap:10px;align-items:center}
+  .mz-row input{flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:14px;color:var(--ink);font-family:var(--body);font-size:14px;outline:none}
+  .mz-row input:focus{border-color:var(--mint)}
+  .mz-unit{font-family:var(--mono);font-size:13px;color:var(--ink-faint)}
+  .mz-hint{font-size:11.5px;color:var(--ink-faint);font-family:var(--mono);margin-top:7px}
+  .mz-list{margin-top:13px;display:flex;flex-direction:column;gap:6px}
+  .mz-item{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-dim);padding:9px 12px;background:var(--card);border-radius:9px}
+  .mz-d{color:var(--mint);margin-left:7px}
+  .mz-photo{font-size:12px;color:var(--ink-dim);margin-top:13px;padding:12px 14px;background:var(--card);border-radius:12px;border-left:2px solid var(--amber)}
+
+  @media (max-width:480px){
+    .macros{grid-template-columns:repeat(2,1fr)}.macro.kcal{grid-column:1 / -1}.readout .cur{font-size:26px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+  <div class="topbar" id="topbar">
+    <span class="tb-title">Recomp 87</span>
+    <span class="tb-goal">90,7 → 87,0 kg</span>
+  </div>
+
+  <!-- ============ TAB 1: HEUTE ============ -->
+  <div class="page-view active" id="page-today">
+    <header class="masthead">
+      <div class="kicker">
+        <span class="dot"></span><span class="eyebrow">Master Plan</span>
+        <div class="mode-toggle" id="modeToggle">
+          <button data-mode="office">Büro-Tag</button>
+          <button data-mode="home">Home Office</button>
+        </div>
+      </div>
+      <h1>Ziel: <b>87 kg</b> bei <b>13 %</b> KFA</h1>
+      <p class="sub">Morgens checken, abends abhaken. Heute zählt.</p>
+    </header>
+
+    <div class="cluster">
+      <div class="readout">
+        <div class="lab"><span class="eyebrow">Gewicht</span><span class="tag">kg</span></div>
+        <div class="vals"><div class="cur">90,7</div><div class="arrow">→</div><div class="goal">87,0</div></div>
+        <div class="delta">Recomp · Trend zählt</div>
+      </div>
+      <div class="readout">
+        <div class="lab"><span class="eyebrow">Körperfett</span><span class="tag">%</span></div>
+        <div class="vals"><div class="cur">16,2</div><div class="arrow">→</div><div class="goal">13,0</div></div>
+        <div class="delta">≈ 3,4 kg Fett runter</div>
+      </div>
+      <div class="today-card">
+        <div class="ring-wrap">
+          <svg width="88" height="88" viewBox="0 0 88 88">
+            <circle class="ring-bg" cx="44" cy="44" r="36"></circle>
+            <circle class="ring-fg" id="ring" cx="44" cy="44" r="36" stroke-dasharray="226.2" stroke-dashoffset="226.2"></circle>
+          </svg>
+          <div class="ring-pct"><b id="ringPct">0%</b><small>Heute</small></div>
+        </div>
+        <div class="today-meta">
+          <div class="eyebrow">Tagesfortschritt</div>
+          <h2 id="todayHeadline">Leg los für heute</h2>
+          <div class="line2">
+            <span class="pill"><span class="fire">▲</span> Streak <b id="streak">0</b></span>
+            <span class="pill"><b id="doneCount">0</b>/<span id="totalCount">0</span> erledigt</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <div class="ready">
+        <h3>Readiness heute</h3>
+        <div class="rd-sub">10 Sekunden — danach weißt du, wie hart du fährst.</div>
+        <div id="readyMetrics"></div>
+        <div class="rd-result" id="readyResult"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="idx">01</span><h2>Heute abhaken</h2></div>
+      <div id="dailyChecklist"></div>
+    </section>
+  </div>
+
+  <!-- ============ TAB 2: WOCHENPLAN ============ -->
+  <div class="page-view" id="page-week">
+    <div class="page-title">Wochenplan</div>
+    <p class="page-lede">Tippe eine Einheit zum Abhaken. Mit + fügst du weitere hinzu, am Griff verschiebst du sie zwischen Tagen.</p>
+    <section style="margin-top:18px">
+      <div class="week" id="week"></div>
+      <div class="week-note"><b>Flexibel:</b> Mehrere Einheiten pro Tag möglich (z.B. morgens Lauf, abends Gym). Da deine Bürotage variieren, zieh die Lifts auf die Tage, an denen du ins Büro fährst.</div>
+    </section>
+  </div>
+
+  <!-- ============ TAB 3: ERNÄHRUNG & FOKUS ============ -->
+  <div class="page-view" id="page-food">
+    <div class="page-title">Ernährung &amp; Fokus</div>
+    <p class="page-lede">Deine Makros, Proteinquellen und der Anti-Stress-Rhythmus für den Arbeitstag.</p>
+
+    <section style="margin-top:18px">
+      <div class="macros">
+        <div class="macro kcal"><div class="mlab">Tagesziel</div><div class="mval">2.300<span> kcal</span></div></div>
+        <div class="macro p"><div class="mlab">Protein</div><div class="mval">190<span>g</span></div><div class="mkcal">760 kcal</div></div>
+        <div class="macro"><div class="mlab">Carbs</div><div class="mval">215<span>g</span></div><div class="mkcal">860 kcal</div></div>
+        <div class="macro"><div class="mlab">Fett</div><div class="mval">75<span>g</span></div><div class="mkcal">675 kcal</div></div>
+      </div>
+      <div class="info"><b>2.300 kcal, ehrlich getrackt.</b> Bei Ø 2.190 geloggt und kaum sinkendem Gewicht liegt dein echter Verbrauch tiefer — oder es wird untergeloggt. Fett bleibt bei 75 g (Testosteron). Nach 3 Wochen am Trend justieren.</div>
+      <div class="fuel">
+        <div class="fuel-row"><span class="ffood">Morgens — Sojaprotein-Shake + Haferflocken</span><span class="fp">~40 g</span></div>
+        <div class="fuel-row"><span class="ffood">Mittag — Tofu / Tempeh + Hülsenfrüchte</span><span class="fp">~45 g</span></div>
+        <div class="fuel-row"><span class="ffood">Unterwegs — Skyr, Hüttenkäse, Hähnchen</span><span class="fp">~30 g</span></div>
+        <div class="fuel-row"><span class="ffood">Abend — Linsen / Edamame + Quark</span><span class="fp">~40 g</span></div>
+        <div class="fuel-row"><span class="ffood">Lücke — 1 Protein-Shake</span><span class="fp">~30 g</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="idx">04</span><h2>Anti-Stress</h2></div>
+      <div class="blocks">
+        <div class="block">
+          <div class="block-head"><span class="tcode">AM</span><h3>Morgen</h3><span class="sub">06:00–09:00</span></div>
+          <ul>
+            <li class="key"><b>10 Min Tageslicht</b> nach dem Aufstehen. An Gym-Tagen zählt der Weg zum Studio.</li>
+            <li>Erste Mahlzeit <b>mit Protein</b>. Koffein-Stopp um 14 Uhr.</li>
+            <li><b>Top 3 festlegen</b>, bevor du Outlook/Teams öffnest.</li>
+          </ul>
+        </div>
+        <div class="block">
+          <div class="block-head"><span class="tcode">DAY</span><h3>Arbeitstag</h3><span class="sub">40–45 h</span></div>
+          <ul>
+            <li>Stündlicher <b>Bewegungs-Alarm</b> (gesetzt) — aufstehen, 2–3 Min gehen.</li>
+            <li>Zwischen Meetings <b>5× Box-Breathing</b> (4-4-4-4).</li>
+            <li><b>Deep-Work-Block</b> für Copilot Studio: 1–2 h ohne Teams &amp; Mail.</li>
+            <li>Mittag = <b>echte Pause</b> + 10-Min-Walk.</li>
+          </ul>
+        </div>
+        <div class="block">
+          <div class="block-head"><span class="tcode">PM</span><h3>Abend</h3><span class="sub">Schlaf = der Hebel</span></div>
+          <ul>
+            <li class="key"><b>Shutdown-Ritual:</b> Tag abschließen, To-dos notieren, Laptop zu.</li>
+            <li><b>Bildschirm-Stopp ~1 h vor dem Bett.</b></li>
+            <li><b>Magnesium 300–400 mg.</b></li>
+            <li>Feste Schlafenszeit <b>22:30</b> → ~7,5 h bis 06:00.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dod">
+        <h3>Bremsklotz-Killer</h3>
+        <div class="dod-sub">Unklare Aufgabe? Erst diese 3 klären:</div>
+        <div id="dodBox"></div>
+        <div class="dod-hint">Wenn ein Punkt offen ist: Starte die 15-Min-Regel. Fragen statt prokrastinieren!</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ TAB 4: MIND & INSIGHTS ============ -->
+  <div class="page-view" id="page-mind">
+    <div class="page-title">Mind &amp; Insights</div>
+    <p class="page-lede">Dein mentales Kontrollzentrum — Stimmung, Muster und Wochen-Erfolg.</p>
+
+    <section style="margin-top:18px">
+      <div class="panel">
+        <h3>Wie war dein Tag heute emotional?</h3>
+        <div class="emo-grid" id="emoGrid">
+          <button class="emo-btn focus" data-emo="focus"><span class="emo-dot" style="background:var(--mint)"></span><span class="emo-l">Fokussiert &amp; Zufrieden</span></button>
+          <button class="emo-btn stress" data-emo="stress"><span class="emo-dot" style="background:var(--amber)"></span><span class="emo-l">Gestresst &amp; Hektisch</span></button>
+          <button class="emo-btn tired" data-emo="tired"><span class="emo-dot" style="background:var(--blue)"></span><span class="emo-l">Müde &amp; Ausgelaugt</span></button>
+          <button class="emo-btn doom" data-emo="doom"><span class="emo-dot" style="background:var(--coral)"></span><span class="emo-l">Doomscrolling-Falle</span></button>
+        </div>
+        <div class="emo-hist">
+          <div class="eh-days" id="ehDays"></div>
+          <div class="eh-cells" id="ehCells"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="idx">∑</span><h2>Wochen-Insights</h2></div>
+      <div class="insights" id="insights"></div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="idx">✦</span><h2>Daily Win</h2></div>
+      <div class="win-card">
+        <input type="text" class="win-input" id="winInput" placeholder="Was lief heute richtig gut? (Enter zum Speichern)" maxlength="120">
+        <div class="win-list" id="winList"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="idx">↗</span><h2>Fortschritt</h2></div>
+      <div class="measure">
+        <div class="mz-row"><input type="number" id="waistInput" inputmode="decimal" placeholder="Bauchumfang diese Woche"><span class="mz-unit">cm</span></div>
+        <div class="mz-hint">Wöchentlich — morgens, nüchtern, entspannt messen.</div>
+        <div class="mz-list" id="waistList"></div>
+        <div class="mz-photo">📸 1 Foto front + seitlich, gleiche Bedingungen. Die Waage lügt, das Foto nicht.</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="idx">06</span><h2>Wochen-Check</h2></div>
+      <div id="weeklyChecklist"></div>
+    </section>
+
+    <div class="foot">
+      <div>Recomp-Cockpit · gebaut für dich</div>
+      <div class="foot-actions">
+        <button class="btn install" id="installBtn">App installieren</button>
+        <button class="btn" id="resetBtn">Heute zurücksetzen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom sheet -->
+  <div class="sheet-ov" id="sheetOv">
+    <div class="sheet">
+      <div class="sheet-grip"></div>
+      <h3>Einheit hinzufügen</h3>
+      <div class="sheet-opts" id="sheetOpts"></div>
+      <button class="sheet-cancel" id="sheetCancel">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- bottom tab bar -->
+  <nav class="tab-bar" id="tabBar">
+    <button class="tab-btn on" data-tab="page-today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" stroke-linecap="round"/></svg>
+      <span class="tb-l">HEUTE</span><span class="tb-ind"></span>
+    </button>
+    <button class="tab-btn" data-tab="page-week">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke-linecap="round"/></svg>
+      <span class="tb-l">PLAN</span><span class="tb-ind"></span>
+    </button>
+    <button class="tab-btn" data-tab="page-food">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2v8a3 3 0 0 0 6 0V2M9 10v12M17 2c-1.5 0-3 1.5-3 5s1.5 5 3 5v10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="tb-l">FUEL</span><span class="tb-ind"></span>
+    </button>
+    <button class="tab-btn" data-tab="page-mind">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" stroke-linejoin="round"/></svg>
+      <span class="tb-l">MIND</span><span class="tb-ind"></span>
+    </button>
+  </nav>
+
+<script>
+(function(){
+  "use strict";
+  const LS={ g(k){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;} },
+             s(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} } };
+  function dKey(d){ const x=d||new Date(); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+  function wKey(d){ const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const dy=x.getUTCDay()||7; x.setUTCDate(x.getUTCDate()+4-dy); const ys=new Date(Date.UTC(x.getUTCFullYear(),0,1)); const w=Math.ceil((((x-ys)/86400000)+1)/7); return x.getUTCFullYear()+"-W"+String(w).padStart(2,"0"); }
+  function uid(){ return "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  const today=dKey(), weekId=wKey(new Date());
+
+  const CHECK='<svg viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const CHEV='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M4 6l4 4 4-4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const X='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M4 4l8 8M12 4l-8 8" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const GRIP='<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3" r="1.4"/><circle cx="10.5" cy="3" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="13" r="1.4"/><circle cx="10.5" cy="13" r="1.4"/></svg>';
+  const PLUS='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M8 3v10M3 8h10" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  /* ===== DAILY (ctx: both|home|office, cat: food|move|focus|sleep) ===== */
+  const DAILY=[
+    {g:"Ernährung",items:[
+      {id:"e1",t:"2.300 kcal getroffen",s:"± 100 kcal",ctx:"both",cat:"food"},
+      {id:"e2",t:"190 g Protein erreicht",ctx:"both",cat:"food"},
+      {id:"e3",t:"3,0 L Wasser getrunken",ctx:"both",cat:"food"},
+      {id:"e4",t:"Alles geloggt",s:"auch unterwegs, Snacks & Öle",ctx:"both",cat:"food"},
+      {id:"e5",t:"Offline-Frühstück eingehalten",s:"Schreibtisch-Verbot!",ctx:"home",cat:"food"},
+      {id:"e6",t:"Echte Mittagspause um 12:00",s:"Weg vom Bildschirm",ctx:"both",cat:"food"},
+      {id:"e7",t:"Kreatin 5 g",s:"täglich · Timing egal",ctx:"both",cat:"food"},
+      {id:"e8",t:"Post-Workout-Protein nach dem Lift",s:"besonders beim Nüchtern-Training",ctx:"both",cat:"food"},
+    ]},
+    {g:"Bewegung",items:[
+      {id:"b1",t:"Training oder Lauf laut Plan",ctx:"both",cat:"move"},
+      {id:"b2",t:"9.500+ Schritte",ctx:"both",cat:"move"},
+      {id:"b3",t:"10-Min-Walk nach einer Mahlzeit",ctx:"both",cat:"move"},
+    ]},
+    {g:"Stress & Schlaf",items:[
+      {id:"s1",t:"10 Min Tageslicht am Morgen",ctx:"both",cat:"focus"},
+      {id:"s2",t:"Kein Koffein nach 14:00",ctx:"both",cat:"focus"},
+      {id:"s3",t:"Arbeits-Shutdown am Feierabend",ctx:"both",cat:"focus"},
+      {id:"s7",t:"15-Min-Regel bei Unklarheit genutzt",s:"Sofort fragen statt aussitzen!",ctx:"both",cat:"focus"},
+      {id:"s4",t:"Bildschirm-Stopp ~1 h vor dem Bett",ctx:"both",cat:"sleep"},
+      {id:"s5",t:"Magnesium abends",ctx:"both",cat:"sleep"},
+      {id:"s8",t:"Handy-Garage & Sofa-Detox",s:"Scrollen maximal im Stehen!",ctx:"both",cat:"sleep"},
+      {id:"s6",t:"Bis 22:30 im Bett",ctx:"both",cat:"sleep"},
+    ]},
+  ];
+  const ALL_ITEMS=DAILY.flatMap(g=>g.items);
+  const WEEKLY=[
+    {id:"w1",t:"4 Krafteinheiten absolviert"},
+    {id:"w2",t:"2–3 Läufe / Cardio-Einheiten"},
+    {id:"w3",t:"Ø Schlaf-Score > 72",s:"Samsung Health"},
+    {id:"w7",t:"Projekt-Meilensteine der Woche erreicht"},
+    {id:"w4",t:"5 von 7 Tagen Kalorien im Ziel"},
+    {id:"w8",t:"Handy-Garage an ≥ 5 Abenden"},
+    {id:"w5",t:"1× gewogen",s:"morgens, nüchtern"},
+    {id:"w6",t:"Deload geprüft",s:"alle 6–8 Wochen"},
+    {id:"w9",t:"Sonntags-Review: Insights checken & Woche planen"},
+    {id:"w10",t:"1 echter Ruhetag eingehalten",s:"kein Cardio"},
+  ];
+  const STAT_CATS={ food:["e1","e2","e3","e4","e5","e6","e7","e8"], focus:["s1","s2","s3","s7"], sleep:["s4","s5","s6","s8"] };
+
+  let mode = LS.g("mode:"+today) || "office";
+  let todayState = LS.g("day:"+today) || {};
+  let weekState  = LS.g("week:"+weekId) || {};
+
+  function visibleItems(m){ return ALL_ITEMS.filter(it=>it.ctx==="both"||it.ctx===m); }
+  function visibleIds(m){ return visibleItems(m).map(i=>i.id); }
+
+  /* ---- daily checklist render (mode-filtered) ---- */
+  function renderDaily(){
+    const c=document.getElementById("dailyChecklist");
+    c.innerHTML=DAILY.map(g=>{
+      const its=g.items.filter(it=>it.ctx==="both"||it.ctx===mode);
+      if(!its.length) return "";
+      return '<div class="group"><div class="group-lab">'+g.g+'</div><div class="list">'+its.map(taskRow).join("")+'</div></div>';
+    }).join("");
+    c.querySelectorAll(".task").forEach(el=>{
+      paintTask(el);
+      const t=()=>{ const id=el.dataset.id; todayState[id]=!todayState[id]; if(!todayState[id])delete todayState[id];
+        saveDaily(); paintTask(el); updateRing(); computeStreak(); renderInsights(); };
+      el.addEventListener("click",t);
+      el.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){e.preventDefault();t();} });
+    });
+    document.getElementById("totalCount").textContent=visibleIds(mode).length;
+    updateRing();
+  }
+  function taskRow(it){ const sub=it.s?'<small>'+it.s+'</small>':''; const hc=it.ctx==="home"?" ctx-home":"";
+    return '<div class="task'+hc+'" role="checkbox" aria-checked="false" tabindex="0" data-id="'+it.id+'"><div class="box">'+CHECK+'</div><div class="task-txt">'+it.t+sub+'</div></div>'; }
+  function paintTask(el){ const on=!!todayState[el.dataset.id]; el.classList.toggle("done",on); el.setAttribute("aria-checked",on?"true":"false"); }
+  function saveDaily(){ LS.s("day:"+today,todayState); LS.s("dmeta:"+today,{n:visibleIds(mode).length,mode:mode}); }
+
+  function dailyDone(){ return visibleIds(mode).reduce((n,id)=>n+(todayState[id]?1:0),0); }
+  const CIRC=2*Math.PI*36;
+  function updateRing(){
+    const tot=visibleIds(mode).length, done=dailyDone(), pct=tot?Math.round(done/tot*100):0;
+    const ring=document.getElementById("ring");
+    ring.style.strokeDasharray=CIRC.toFixed(1); ring.style.strokeDashoffset=(CIRC*(1-(tot?done/tot:0))).toFixed(1);
+    const full=tot>0 && done>=tot-2;
+    ring.style.stroke=full?"var(--mint)":"var(--amber)";
+    document.getElementById("ringPct").textContent=pct+"%";
+    document.getElementById("doneCount").textContent=done; document.getElementById("totalCount").textContent=tot;
+    const h=document.getElementById("todayHeadline");
+    h.textContent = done===0?"Leg los für heute":full?"Tag geschafft ✓":done>=tot*0.6?"Fast da — dranbleiben":"Guter Start";
+  }
+  function computeStreak(){
+    let s=0; const d=new Date();
+    const tmeta=LS.g("dmeta:"+today)||{n:visibleIds(mode).length};
+    if(tmeta.n>0 && dailyDone()>=tmeta.n-2) s++;
+    for(let i=1;i<60;i++){ d.setDate(d.getDate()-1); const k=dKey(d); const st=LS.g("day:"+k); const mt=LS.g("dmeta:"+k);
+      if(!st||!mt) break; const ids=visibleIds(mt.mode||"office"); const done=ids.reduce((n,id)=>n+(st[id]?1:0),0);
+      if(mt.n>0 && done>=mt.n-2) s++; else break; }
+    document.getElementById("streak").textContent=s;
+  }
+
+  /* ---- HO / Büro toggle ---- */
+  function paintMode(){ document.querySelectorAll("#modeToggle button").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode)); }
+  document.querySelectorAll("#modeToggle button").forEach(b=>{
+    b.addEventListener("click",()=>{ mode=b.dataset.mode; LS.s("mode:"+today,mode); paintMode(); renderDaily(); saveDaily(); computeStreak(); renderInsights(); });
+  });
+
+  /* ===== Wochenplan ===== */
+  const LIB={
+    push:{title:"Push",badge:"lift",ex:[{id:"p1",t:"Bankdrücken (LH)",s:"4 × 5–7"},{id:"p2",t:"Schrägbank DB Press",s:"3 × 10–12"},{id:"p3",t:"Pec Deck / Kabel-Fly",s:"3 × 12–15"},{id:"p4",t:"Schulterdrücken (Maschine)",s:"3 × 10–12"},{id:"p5",t:"Trizep Pushdown",s:"3 × 12–15"},{id:"p6",t:"Overhead Trizep Ext.",s:"3 × 12"}]},
+    pull:{title:"Pull",badge:"lift",ex:[{id:"l1",t:"Klimmzüge / Latzug",s:"4 × 8–10"},{id:"l2",t:"Langhantelrudern",s:"4 × 8–10"},{id:"l3",t:"Kabelrudern sitzend",s:"3 × 12"},{id:"l4",t:"Face Pulls",s:"3 × 15–20"},{id:"l5",t:"Bizep Curl (LH)",s:"3 × 10–12"},{id:"l6",t:"Hammer Curl",s:"3 × 12"}]},
+    legs:{title:"Beine",badge:"lift",ex:[{id:"g1",t:"Beinpresse",s:"4 × 8–10"},{id:"g2",t:"Hack Squat",s:"3 × 10–12"},{id:"g3",t:"Rumänisches Kreuzheben",s:"4 × 8–10"},{id:"g4",t:"Hip Thrust",s:"3 × 12"},{id:"g5",t:"Beinstrecker",s:"3 × 15"},{id:"g6",t:"Beinbeuger liegend",s:"3 × 12"}]},
+    arms:{title:"Schultern + Arme",badge:"lift",ex:[{id:"a1",t:"Seated DB Schulterdrücken",s:"4 × 10–12"},{id:"a2",t:"Seitheben (Kabel)",s:"4 × 15–20"},{id:"a3",t:"Seitheben (DB)",s:"3 × 15–20"},{id:"a4",t:"Reverse Pec Deck",s:"3 × 15"},{id:"a5",t:"Face Pulls",s:"3 × 15–20"},{id:"a6",t:"Bizep Curl (Konz.)",s:"3 × 12"},{id:"a7",t:"Incline DB Curl",s:"3 × 12"},{id:"a8",t:"Skull Crushers",s:"3 × 10–12"},{id:"a9",t:"Trizep Pushdown",s:"3 × 15"}]},
+    run:{title:"Lauf",badge:"cardio",ex:[{id:"r1",t:"Locker laufen",s:"5 km · ~6:30/km"},{id:"r2",t:"Cooldown + Dehnen",s:"5 Min"}]},
+    swim:{title:"Schwimmen",badge:"cardio",ex:[{id:"sw1",t:"Bahnen schwimmen",s:"20–30 Min"}]},
+    mobility:{title:"Mobility & Dehnen",badge:"mob",ex:[{id:"m1",t:"Foam Rolling",s:"15 Min"},{id:"m2",t:"Stretching",s:"10 Min"}]},
+    mindful:{title:"Mindful Reset",badge:"mob",ex:[{id:"mr1",t:"Digital-Detox-Spaziergang",s:"20 Min"}]},
+    rest:{title:"Pause",badge:"rest",ex:[]},
+  };
+  const WEEKDAYS=["MO","DI","MI","DO","FR","SA","SO"];
+  const WEEK_KEY="plan:week_v4";
+  function mk(lib,title){ return {sid:uid(),lib:lib,title:title||null,done:{}}; }
+  const DEFAULT_WEEK=[{day:"MO",sessions:[mk("push")]},{day:"DI",sessions:[mk("run")]},{day:"MI",sessions:[mk("pull")]},{day:"DO",sessions:[mk("arms")]},{day:"FR",sessions:[mk("legs")]},{day:"SA",sessions:[mk("swim")]},{day:"SO",sessions:[mk("rest")]}];
+  let WEEK=[], SID2SESS={};
+  function sTitle(s){ return s.title||(LIB[s.lib]?LIB[s.lib].title:"Einheit"); }
+  function sEx(s){ return LIB[s.lib]?LIB[s.lib].ex:[]; }
+  function sBadge(s){ return LIB[s.lib]?LIB[s.lib].badge:"lift"; }
+  function loadWeek(){ const sv=LS.g(WEEK_KEY);
+    if(Array.isArray(sv)&&sv.length){ WEEK=sv.map(d=>({day:d.day,sessions:(d.sessions||[]).map(s=>({sid:s.sid||uid(),lib:s.lib,title:s.title||null,done:s.done||{}}))})); }
+    else WEEK=DEFAULT_WEEK.map(d=>({day:d.day,sessions:d.sessions.map(s=>({...s,done:{}}))})); }
+  function saveWeek(){ LS.s(WEEK_KEY,WEEK); }
+  function renderWeek(){
+    const c=document.getElementById("week"); SID2SESS={}; let h="";
+    WEEK.forEach(d=>{
+      h+='<div class="day-header" data-day="'+d.day+'"><span class="wd">'+d.day+'</span><span class="hr"></span><button class="add-btn" data-add="'+d.day+'">'+PLUS+' Einheit</button></div>';
+      if(!d.sessions.length) h+='<div class="day-empty">Ruhetag</div>';
+      d.sessions.forEach(s=>{ SID2SESS[s.sid]=s; h+=sessionHTML(s); });
+    });
+    c.innerHTML=h; bindWeek(c); initSortable(c);
+  }
+  function sessionHTML(s){
+    const ex=sEx(s),n=ex.length,done=Object.keys(s.done||{}).filter(k=>s.done[k]).length,bdg=sBadge(s);
+    let cnt = n===0?'<small>Ruhetag</small>':(done>=n?'<small class="alldone">'+done+'/'+n+' · fertig ✓</small>':'<small>'+done+'/'+n+' Übungen</small>');
+    let body="";
+    if(n>0){ const wl=(bdg==="lift"); body='<div class="s-body">'+ex.map(e=>exRow(s,e,wl)).join("")+'<div class="s-foot"><button class="reset-btn" data-reset="'+s.sid+'">Zurücksetzen</button></div></div>'; }
+    const acc=bdg==="cardio"?"cardio":bdg==="rest"?"rest":bdg==="mob"?"mob":"";
+    const blab=bdg==="lift"?"Lift":bdg==="cardio"?"Cardio":bdg==="mob"?"Reg":"Rest";
+    return '<div class="session" data-sid="'+s.sid+'"><div class="s-head" data-toggle="'+s.sid+'"><span class="s-accent '+acc+'"></span><div class="s-title">'+sTitle(s)+cnt+'</div><span class="badge b-'+bdg+'">'+blab+'</span>'+(n>0?'<button class="chev" data-toggle="'+s.sid+'">'+CHEV+'</button>':'')+'<button class="s-remove" data-remove="'+s.sid+'">'+X+'</button><button class="handle">'+GRIP+'</button></div>'+body+'</div>';
+  }
+  function exRow(s,e,wl){
+    const dn=!!(s.done&&s.done[e.id]); let log="";
+    if(wl){ const arr=LS.g("exlog:"+e.id)||[]; const last=arr.length?arr[arr.length-1]:null;
+      const hint=last?("Zuletzt: "+last.w+" × "+last.r):"Top-Satz eintragen";
+      log='<div class="ex-log"><span class="exl-hint" data-hint="'+e.id+'">'+hint+'</span><span class="exl-in"><input type="number" inputmode="decimal" class="exl-w" data-ex="'+e.id+'" placeholder="kg"'+(last?(' value="'+last.w+'"'):'')+'><span class="exl-x">×</span><input type="number" inputmode="numeric" class="exl-r" data-ex="'+e.id+'" placeholder="Wdh"'+(last?(' value="'+last.r+'"'):'')+'><span class="exl-pr" data-pr="'+e.id+'"></span></span></div>'; }
+    return '<div class="ex'+(dn?' done':'')+'" data-sid="'+s.sid+'" data-ex="'+e.id+'"><div class="ex-top"><div class="box">'+CHECK+'</div><div class="ex-txt">'+e.t+'</div><div class="ex-sets">'+(e.s||'')+'</div></div>'+log+'</div>';
+  }
+  function commitLog(c,exId){
+    const wEl=c.querySelector('.exl-w[data-ex="'+exId+'"]'), rEl=c.querySelector('.exl-r[data-ex="'+exId+'"]'); if(!wEl||!rEl)return;
+    const w=parseFloat(String(wEl.value).replace(",",".")), r=parseInt(rEl.value,10); if(!(w>0)||!(r>0))return;
+    let arr=LS.g("exlog:"+exId)||[]; const prevMax=arr.reduce((m,x)=>Math.max(m,x.w*(1+x.r/30)),0);
+    if(arr.length&&arr[arr.length-1].d===today) arr[arr.length-1]={w:w,r:r,d:today}; else arr.push({w:w,r:r,d:today});
+    if(arr.length>12)arr=arr.slice(-12); LS.s("exlog:"+exId,arr);
+    const est=w*(1+r/30); const prEl=c.querySelector('.exl-pr[data-ex="'+exId+'"]'); if(prEl)prEl.textContent=(prevMax>0&&est>prevMax+0.05)?"PR 📈":"";
+    const hEl=c.querySelector('.exl-hint[data-hint="'+exId+'"]'); if(hEl)hEl.textContent="Zuletzt: "+w+" × "+r;
+  }
+  function bindWeek(c){
+    c.querySelectorAll("[data-toggle]").forEach(el=>el.addEventListener("click",e=>{ if(e.target.closest(".handle")||e.target.closest(".s-remove"))return; const sid=el.dataset.toggle,ss=c.querySelector('.session[data-sid="'+sid+'"]'); if(ss&&sEx(SID2SESS[sid]).length>0)ss.classList.toggle("open"); }));
+    c.querySelectorAll(".ex-top").forEach(el=>el.addEventListener("click",()=>{ const ex=el.parentElement; const sid=ex.dataset.sid,exi=ex.dataset.ex,s=SID2SESS[sid]; if(!s)return; s.done=s.done||{}; s.done[exi]=!s.done[exi]; if(!s.done[exi])delete s.done[exi]; ex.classList.toggle("done",!!s.done[exi]); updCnt(c,sid); saveWeek(); }));
+    c.querySelectorAll(".exl-w, .exl-r").forEach(inp=>{ inp.addEventListener("click",e=>e.stopPropagation()); inp.addEventListener("change",()=>commitLog(c,inp.dataset.ex)); inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();commitLog(c,inp.dataset.ex);inp.blur();} }); });
+    c.querySelectorAll("[data-reset]").forEach(el=>el.addEventListener("click",()=>{ const sid=el.dataset.reset,s=SID2SESS[sid]; if(!s)return; s.done={}; c.querySelectorAll('.ex[data-sid="'+sid+'"]').forEach(x=>x.classList.remove("done")); updCnt(c,sid); saveWeek(); }));
+    c.querySelectorAll("[data-remove]").forEach(el=>el.addEventListener("click",()=>{ const sid=el.dataset.remove; WEEK.forEach(d=>d.sessions=d.sessions.filter(s=>s.sid!==sid)); saveWeek(); renderWeek(); }));
+    c.querySelectorAll("[data-add]").forEach(el=>el.addEventListener("click",()=>openSheet(el.dataset.add)));
+  }
+  function updCnt(c,sid){ const s=SID2SESS[sid],ex=sEx(s),n=ex.length,done=Object.keys(s.done||{}).filter(k=>s.done[k]).length; const sm=c.querySelector('.session[data-sid="'+sid+'"] .s-title small'); if(!sm)return; if(done>=n&&n>0){sm.textContent=done+'/'+n+' · fertig ✓';sm.className="alldone";}else{sm.textContent=done+'/'+n+' Übungen';sm.className="";} }
+
+  let addDay=null;
+  function openSheet(day){ addDay=day; const o=document.getElementById("sheetOpts");
+    const col={lift:"var(--amber)",cardio:"var(--blue)",mob:"var(--mint)",rest:"var(--ink-faint)"};
+    let h=""; Object.keys(LIB).forEach(k=>{ const w=LIB[k]; h+='<button class="sheet-opt" data-lib="'+k+'"><span class="so-dot" style="background:'+col[w.badge]+'"></span><span class="so-t">'+w.title+'<small>'+(w.ex.length?w.ex.length+' Übungen':'Ruhetag')+'</small></span></button>'; });
+    h+='<button class="sheet-opt" data-lib="__custom"><span class="so-dot" style="background:var(--coral)"></span><span class="so-t">Eigene Einheit…<small>Name eingeben</small></span></button>';
+    o.innerHTML=h;
+    o.querySelectorAll(".sheet-opt").forEach(b=>b.addEventListener("click",()=>{ const lib=b.dataset.lib; if(lib==="__custom"){ const nm=(prompt("Name der Einheit:")||"").trim(); if(nm)addSess("__c",nm,true); } else addSess(lib); closeSheet(); }));
+    document.getElementById("sheetOv").classList.add("show");
+  }
+  function closeSheet(){ document.getElementById("sheetOv").classList.remove("show"); }
+  function addSess(lib,title,custom){ const d=WEEK.find(x=>x.day===addDay); if(!d)return;
+    if(custom){ const sid=uid(); const lk="__c_"+sid; LIB[lk]={title:title,badge:"lift",ex:[{id:"c1",t:"Einheit absolviert"}]}; d.sessions.push({sid:sid,lib:lk,title:title,done:{}}); }
+    else d.sessions.push(mk(lib));
+    saveWeek(); renderWeek();
+  }
+  document.getElementById("sheetCancel").addEventListener("click",closeSheet);
+  document.getElementById("sheetOv").addEventListener("click",e=>{ if(e.target.id==="sheetOv")closeSheet(); });
+
+  function dragAfter(c,y){ const els=[...c.querySelectorAll(".session:not(.dragging), .day-header, .day-empty")]; let b={o:-Infinity,el:null}; for(const ch of els){ const r=ch.getBoundingClientRect(); const o=y-r.top-r.height/2; if(o<0&&o>b.o)b={o,el:ch}; } return b.el; }
+  function rebuild(c){ const m={}; WEEK.forEach(d=>m[d.day]=[]); let cur=WEEK[0].day;
+    [...c.children].forEach(ch=>{ if(ch.classList.contains("day-header"))cur=ch.dataset.day; else if(ch.classList.contains("session")){ const s=SID2SESS[ch.dataset.sid]; if(s)(m[cur]=m[cur]||[]).push(s); } });
+    WEEK=WEEK.map(d=>({day:d.day,sessions:m[d.day]||[]})); }
+  function initSortable(c){
+    c.querySelectorAll(".handle").forEach(handle=>handle.addEventListener("pointerdown",e=>{
+      e.preventDefault(); const el=handle.closest(".session"); let sy=e.clientY; el.classList.remove("open"); el.classList.add("dragging");
+      try{handle.setPointerCapture(e.pointerId);}catch(_){}
+      const mv=ev=>{ const dy=ev.clientY-sy; el.style.transform="translateY("+dy+"px)"; const af=dragAfter(c,ev.clientY),nx=el.nextElementSibling;
+        if(af!==el&&af!==nx){ const pt=el.getBoundingClientRect().top; if(af==null)c.appendChild(el);else c.insertBefore(el,af); el.style.transform=""; const nt=el.getBoundingClientRect().top; const sh=pt-nt; sy=ev.clientY-sh; el.style.transform="translateY("+sh+"px)"; } };
+      const up=ev=>{ el.classList.remove("dragging"); el.style.transform=""; rebuild(c); saveWeek(); renderWeek(); handle.removeEventListener("pointermove",mv); handle.removeEventListener("pointerup",up); handle.removeEventListener("pointercancel",up); try{handle.releasePointerCapture(ev.pointerId);}catch(_){} };
+      handle.addEventListener("pointermove",mv); handle.addEventListener("pointerup",up); handle.addEventListener("pointercancel",up);
+    }));
+  }
+
+  /* ===== weekly checklist (tab 4) ===== */
+  function renderWeekly(){
+    const c=document.getElementById("weeklyChecklist");
+    c.innerHTML='<div class="group"><div class="list">'+WEEKLY.map(it=>{ const sub=it.s?'<small>'+it.s+'</small>':'';
+      return '<div class="task" role="checkbox" aria-checked="false" tabindex="0" data-w="'+it.id+'"><div class="box">'+CHECK+'</div><div class="task-txt">'+it.t+sub+'</div></div>'; }).join("")+'</div></div>';
+    c.querySelectorAll(".task").forEach(el=>{ const id=el.dataset.w; el.classList.toggle("done",!!weekState[id]);
+      el.addEventListener("click",()=>{ weekState[id]=!weekState[id]; if(!weekState[id])delete weekState[id]; LS.s("week:"+weekId,weekState); el.classList.toggle("done",!!weekState[id]); }); });
+  }
+
+  /* ===== Definition of Done ===== */
+  function renderDoD(){
+    const labels=["Kenne ich das exakte Zielergebnis?","Weiß ich, wer der Empfänger ist?","Kenne ich den ersten, kleinsten Schritt?"];
+    const st=LS.g("dod:"+today)||{}; const c=document.getElementById("dodBox");
+    c.innerHTML=labels.map((l,i)=>'<div class="dod-item'+(st[i]?' done':'')+'" data-i="'+i+'"><div class="box">'+CHECK+'</div><span>'+l+'</span></div>').join("");
+    c.querySelectorAll(".dod-item").forEach(el=>el.addEventListener("click",()=>{ const i=el.dataset.i; const s=LS.g("dod:"+today)||{}; s[i]=!s[i]; if(!s[i])delete s[i]; LS.s("dod:"+today,s); el.classList.toggle("done",!!s[i]); }));
+  }
+
+  /* ===== emotion picker + 14-day history ===== */
+  function renderEmotion(){
+    const cur=LS.g("emo:"+today);
+    document.querySelectorAll("#emoGrid .emo-btn").forEach(b=>{ b.classList.toggle("on",b.dataset.emo===cur);
+      b.onclick=()=>{ const v=b.dataset.emo; const now=LS.g("emo:"+today); const nv=now===v?null:v; if(nv)LS.s("emo:"+today,nv);else localStorage.removeItem("emo:"+today); renderEmotion(); };
+    });
+    const days=document.getElementById("ehDays"), cells=document.getElementById("ehCells");
+    const WD=["S","M","D","M","D","F","S"]; let dh="",ch="";
+    for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const k=dKey(d); const e=LS.g("emo:"+k);
+      dh+='<div>'+WD[d.getDay()]+'</div>'; ch+='<div class="eh-cell'+(e?' '+e:'')+(i===0?' today':'')+'"></div>'; }
+    days.innerHTML=dh; cells.innerHTML=ch;
+  }
+
+  /* ===== weekly insights ===== */
+  function pctForCat(ids){
+    const d=new Date(); const dow=(d.getDay()||7); let appl=0,done=0;
+    for(let i=0;i<dow;i++){ const dd=new Date(); dd.setDate(dd.getDate()-i); const k=dKey(dd); const st=LS.g("day:"+k); const mt=LS.g("dmeta:"+k);
+      const m=(mt&&mt.mode)||"office";
+      ids.forEach(id=>{ const it=ALL_ITEMS.find(x=>x.id===id); if(!it)return; if(it.ctx!=="both"&&it.ctx!==m)return; appl++; if(st&&st[id])done++; });
+    }
+    return appl?Math.round(done/appl*100):0;
+  }
+  function renderInsights(){
+    const rows=[ {l:"Ernährung & Kalorien",ids:STAT_CATS.food,c:"var(--mint)"}, {l:"Fokus & Stress-Management",ids:STAT_CATS.focus,c:"var(--amber)"}, {l:"Schlaf-Routinen",ids:STAT_CATS.sleep,c:"var(--blue)"} ];
+    document.getElementById("insights").innerHTML=rows.map(r=>{ const p=pctForCat(r.ids);
+      return '<div class="ins-row"><div class="ins-top"><span class="ins-l">'+r.l+'</span><span class="ins-v" style="color:'+r.c+'">'+p+'%</span></div><div class="ins-bar"><div class="ins-fill" style="width:'+p+'%;background:'+r.c+'"></div></div></div>'; }).join("");
+  }
+
+  /* ===== daily win ===== */
+  function renderWins(){
+    const inp=document.getElementById("winInput"); inp.value=LS.g("win:"+today)||"";
+    const list=document.getElementById("winList"); let h="";
+    for(let i=0;i<10;i++){ const d=new Date(); d.setDate(d.getDate()-i); const k=dKey(d); const w=LS.g("win:"+k); if(!w)continue;
+      const lbl=i===0?"Heute":i===1?"Gestern":(d.getDate()+"."+(d.getMonth()+1)+"."); h+='<div class="win-item"><span class="wd">'+lbl+'</span><span>'+w.replace(/</g,"&lt;")+'</span></div>'; }
+    list.innerHTML=h;
+  }
+  (function bindWin(){ const inp=document.getElementById("winInput");
+    const save=()=>{ const v=inp.value.trim(); if(v)LS.s("win:"+today,v);else localStorage.removeItem("win:"+today); renderWins(); };
+    inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); save(); inp.blur(); } });
+    inp.addEventListener("blur",save);
+  })();
+
+  /* ===== readiness check ===== */
+  const RD_METRICS=[{k:"sleep",l:"Schlafqualität"},{k:"energy",l:"Energie"},{k:"fresh",l:"Muskel-Frische"},{k:"motiv",l:"Motivation"}];
+  function renderReady(){
+    const wrap=document.getElementById("readyMetrics"); if(!wrap)return;
+    const st=LS.g("ready:"+today)||{};
+    wrap.innerHTML=RD_METRICS.map(m=>{ let d=""; for(let i=1;i<=5;i++) d+='<button class="rd-dot'+(st[m.k]===i?' on':'')+'" data-k="'+m.k+'" data-v="'+i+'">'+i+'</button>'; return '<div class="rd-metric"><div class="rd-lab">'+m.l+'</div><div class="rd-scale">'+d+'</div></div>'; }).join("");
+    wrap.querySelectorAll(".rd-dot").forEach(b=>b.addEventListener("click",()=>{ const s=LS.g("ready:"+today)||{}; const k=b.dataset.k,v=parseInt(b.dataset.v,10); s[k]=(s[k]===v?null:v); if(s[k]==null)delete s[k]; LS.s("ready:"+today,s); renderReady(); }));
+    rdResult(st);
+  }
+  function rdResult(st){
+    const res=document.getElementById("readyResult"); if(!res)return;
+    const vals=RD_METRICS.map(m=>st[m.k]).filter(v=>typeof v==="number");
+    if(vals.length<4){ res.innerHTML='<span class="rd-badge" style="background:var(--card-2);color:var(--ink-faint)">—</span><span>Bewerte alle 4 für deine heutige Empfehlung.</span>'; return; }
+    const avg=vals.reduce((a,b)=>a+b,0)/4; let col,badge,txt;
+    if(avg>=4){ col="var(--mint)";badge="GRÜN";txt="Vollgas. Geh an deine Lifts ran und versuch Progression."; }
+    else if(avg>=3){ col="var(--amber)";badge="GELB";txt="Solide trainieren — heute kein Maximalversuch."; }
+    else { col="var(--coral)";badge="ROT";txt="Runterfahren. Volumen/Intensität kürzen oder Mobility & Spaziergang statt Lift."; }
+    res.innerHTML='<span class="rd-badge" style="background:'+col+'22;color:'+col+'">'+badge+'</span><span>'+txt+'</span>';
+  }
+
+  /* ===== measurements (waist) ===== */
+  function renderWaist(){
+    const inp=document.getElementById("waistInput"); if(!inp)return;
+    const arr=LS.g("waistlog")||[]; const cur=arr.find(e=>e.w===weekId);
+    if(document.activeElement!==inp) inp.value=cur?cur.v:"";
+    const sorted=[...arr].sort((a,b)=>a.d<b.d?1:-1); let h="";
+    for(let i=0;i<Math.min(sorted.length,6);i++){ const e=sorted[i]; const older=sorted.slice(i+1).find(x=>x.d<e.d); let d="";
+      if(older){ const dv=e.v-older.v; d=' · Δ '+(dv>0?"+":"")+dv.toFixed(1).replace(".",",")+' cm'; }
+      h+='<div class="mz-item"><span>'+e.w+'</span><span>'+String(e.v).replace(".",",")+' cm<span class="mz-d">'+d+'</span></span></div>'; }
+    document.getElementById("waistList").innerHTML=h;
+  }
+  (function bindWaist(){ const inp=document.getElementById("waistInput"); if(!inp)return;
+    const save=()=>{ const v=parseFloat(String(inp.value).replace(",",".")); let arr=LS.g("waistlog")||[];
+      if(!(v>0)) arr=arr.filter(e=>e.w!==weekId);
+      else { const i=arr.findIndex(e=>e.w===weekId); if(i>=0)arr[i]={w:weekId,v:v,d:today}; else arr.push({w:weekId,v:v,d:today}); }
+      LS.s("waistlog",arr); renderWaist(); };
+    inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();save();inp.blur();} });
+    inp.addEventListener("blur",save);
+  })();
+
+  /* ===== tab router ===== */
+  function switchTab(id){
+    document.querySelectorAll(".page-view").forEach(p=>p.classList.toggle("active",p.id===id));
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("on",b.dataset.tab===id));
+    document.getElementById("topbar").classList.toggle("show", id==="page-today" && window.scrollY>40 ? true : false);
+    if(id!=="page-today") document.getElementById("topbar").classList.remove("show");
+    window.scrollTo(0,0);
+    if(id==="page-mind"){ renderEmotion(); renderInsights(); renderWins(); renderWaist(); }
+  }
+  document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+
+  /* ===== collapsing header ===== */
+  window.addEventListener("scroll",()=>{ const onToday=document.getElementById("page-today").classList.contains("active");
+    document.getElementById("topbar").classList.toggle("show", onToday && window.scrollY>40); },{passive:true});
+
+  /* ===== reset ===== */
+  document.getElementById("resetBtn").addEventListener("click",()=>{ todayState={}; saveDaily(); renderDaily(); computeStreak(); renderInsights(); });
+
+  /* ===== init ===== */
+  paintMode(); renderDaily(); computeStreak();
+  loadWeek(); renderWeek();
+  renderWeekly(); renderDoD();
+  renderReady();
+  renderEmotion(); renderInsights(); renderWins(); renderWaist();
+
+  /* PWA */
+  let dp=null; const ib=document.getElementById("installBtn");
+  window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); dp=e; ib.classList.add("show"); });
+  ib.addEventListener("click",async()=>{ if(!dp)return; dp.prompt(); await dp.userChoice; dp=null; ib.classList.remove("show"); });
+  window.addEventListener("appinstalled",()=>ib.classList.remove("show"));
+  if("serviceWorker" in navigator){ window.addEventListener("load",()=>{ navigator.serviceWorker.register("service-worker.js").catch(()=>{}); }); }
+})();
+</script>
+</body>
+</html>
